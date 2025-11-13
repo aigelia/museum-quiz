@@ -1,8 +1,6 @@
 import random
 import re
 
-from environs import Env
-
 
 class QuizStorage:
     def __init__(self, file_path: str):
