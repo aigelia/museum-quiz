@@ -8,4 +8,5 @@ dependencies = [
     "aiogram>=3.22.0",
     "environs>=14.5.0",
     "redis>=7.0.1",
+    "vkbottle>=4.6.2",
 ]
