@@ -5,7 +5,7 @@ from environs import Env
 from aiogram import Bot, Dispatcher, F
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from handlers import *
+from tg_handlers import *
 
 
 def register_handlers(dp, quiz: QuizStorage, db: Database):

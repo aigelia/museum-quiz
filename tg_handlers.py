@@ -84,12 +84,10 @@ async def handle_surrender(
         await message.answer("У вас нет активного вопроса.")
         return
 
-    # Показываем правильный ответ
     correct_answer = quiz.get_answer(current_question)
     await db.reset_current_question(user_id)
     await message.answer(f"Правильный ответ: {correct_answer}")
 
-    # Сразу отправляем новый вопрос
     question = quiz.get_random_question()
     await db.set_current_question(user_id, question)
     await state.set_state(QuizStates.waiting_for_answer)
