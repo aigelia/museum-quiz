@@ -43,12 +43,7 @@ async def handle_new_question(message: Message, quiz: QuizStorage, db: Database,
     question = quiz.get_random_question()
     await db.set_current_question(user_id, question)
     await state.set_state(QuizStates.waiting_for_answer)
-
     await message.answer(question)
-
-    correct_answer = quiz.get_answer(question)
-    print(f"[DEBUG] User {user_id} получил вопрос: {question}")
-    print(f"[DEBUG] Правильный ответ: {correct_answer}")
 
 
 async def handle_solution_attempt(message: Message, quiz: QuizStorage, db: Database, state: FSMContext):
@@ -92,9 +87,6 @@ async def handle_surrender(
     await db.set_current_question(user_id, question)
     await state.set_state(QuizStates.waiting_for_answer)
     await message.answer(question)
-
-    print(f"[DEBUG] User {user_id} получил вопрос: {question}")
-    print(f"[DEBUG] Правильный ответ: {quiz.get_answer(question)}")
 
 
 async def handle_score(message: Message, db: Database):

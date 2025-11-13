@@ -36,10 +36,6 @@ async def handle_new_question(message: Message, quiz: QuizStorage, db: Database)
     keyboard = get_main_keyboard()
     await message.answer(question, keyboard=keyboard)
 
-    correct_answer = quiz.get_answer(question)
-    print(f"[DEBUG] User {user_id} получил вопрос: {question}")
-    print(f"[DEBUG] Правильный ответ: {correct_answer}")
-
 
 async def handle_surrender(message: Message, quiz: QuizStorage, db: Database):
     user_id = message.from_id
@@ -59,9 +55,6 @@ async def handle_surrender(message: Message, quiz: QuizStorage, db: Database):
 
     keyboard = get_main_keyboard()
     await message.answer(question, keyboard=keyboard)
-
-    print(f"[DEBUG] User {user_id} получил вопрос: {question}")
-    print(f"[DEBUG] Правильный ответ: {quiz.get_answer(question)}")
 
 
 async def handle_score(message: Message, db: Database):

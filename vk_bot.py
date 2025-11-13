@@ -41,8 +41,6 @@ def main():
     db = Database(redis_client)
 
     register_handlers(bot, quiz, db)
-
-    print("VK бот запущен!")
     bot.run_forever()
 
 

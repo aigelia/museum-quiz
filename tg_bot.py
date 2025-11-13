@@ -39,8 +39,6 @@ async def main():
 
     try:
         await redis_client.ping()
-        print(f"Подключаемся к Redis: host='{redis_host}', port={redis_port}, password={'set' if redis_password else 'none'}")
-        print("Redis подключен ✅")
     except Exception as e:
         raise ConnectionError(f"Ошибка подключения к Redis: {e}")
 
