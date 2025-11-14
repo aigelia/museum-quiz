@@ -5,17 +5,37 @@ from environs import Env
 from aiogram import Bot, Dispatcher, F
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from tg_handlers import *
+from tg_handlers import (
+    command_start_handler,
+    handle_new_question,
+    handle_surrender,
+    handle_score,
+    handle_solution_attempt,
+    QuizStates
+)
+from quiz import load_questions
 
 
-def register_handlers(dp, quiz: QuizStorage, db: Database):
+def register_handlers(dp: Dispatcher, redis_client: redis.Redis, questions: dict):
     from functools import partial
 
     dp.message.register(command_start_handler, CommandStart())
-    dp.message.register(partial(handle_new_question, quiz=quiz, db=db), F.text == "Новый вопрос")
-    dp.message.register(partial(handle_surrender, quiz=quiz, db=db), F.text == "Сдаться")
-    dp.message.register(partial(handle_score, db=db), F.text == "Мой счёт")
-    dp.message.register(partial(handle_solution_attempt, quiz=quiz, db=db), QuizStates.waiting_for_answer)
+    dp.message.register(
+        partial(handle_new_question, redis_client=redis_client, questions=questions),
+        F.text == "Новый вопрос"
+    )
+    dp.message.register(
+        partial(handle_surrender, redis_client=redis_client, questions=questions),
+        F.text == "Сдаться"
+    )
+    dp.message.register(
+        partial(handle_score, redis_client=redis_client),
+        F.text == "Мой счёт"
+    )
+    dp.message.register(
+        partial(handle_solution_attempt, redis_client=redis_client, questions=questions),
+        QuizStates.waiting_for_answer
+    )
 
 
 async def main():
@@ -42,10 +62,9 @@ async def main():
     except Exception as e:
         raise ConnectionError(f"Ошибка подключения к Redis: {e}")
 
-    quiz = QuizStorage("quiz-questions/1vs1200.txt")
-    db = Database(redis_client)
+    questions = load_questions("quiz-questions/1vs1200.txt")
 
-    register_handlers(dp, quiz, db)
+    register_handlers(dp, redis_client, questions)
 
     await dp.start_polling(bot)
 

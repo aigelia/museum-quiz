@@ -1,9 +1,9 @@
-import re
+import random
+import redis.asyncio as redis
 from vkbottle.bot import Message
 from vkbottle import Keyboard, KeyboardButtonColor, Text
 
-from quiz_storage import QuizStorage
-from database import Database
+from quiz import normalize_answer
 
 
 def get_main_keyboard():
@@ -15,60 +15,53 @@ def get_main_keyboard():
     return keyboard.get_json()
 
 
-def normalize_answer(answer: str) -> str:
-    if not answer:
-        return ""
-    answer = re.sub(r"\(.*?\)", "", answer)
-    answer = answer.split(".")[0]
-    return answer.strip().lower()
-
-
 async def handle_start(message: Message):
     keyboard = get_main_keyboard()
     await message.answer("Привет! Я бот для викторин 🎯", keyboard=keyboard)
 
 
-async def handle_new_question(message: Message, quiz: QuizStorage, db: Database):
+async def handle_new_question(message: Message, redis_client: redis.Redis, questions: dict):
     user_id = message.from_id
-    question = quiz.get_random_question()
-    await db.set_current_question(user_id, question)
+    question = random.choice(list(questions.keys()))
+    await redis_client.set(f"user:{user_id}:current_question", question)
 
     keyboard = get_main_keyboard()
     await message.answer(question, keyboard=keyboard)
 
 
-async def handle_surrender(message: Message, quiz: QuizStorage, db: Database):
+async def handle_surrender(message: Message, redis_client: redis.Redis, questions: dict):
     user_id = message.from_id
-    current_question = await db.get_current_question(user_id)
+    current_question = await redis_client.get(f"user:{user_id}:current_question")
 
     if not current_question:
         keyboard = get_main_keyboard()
         await message.answer("У вас нет активного вопроса.", keyboard=keyboard)
         return
 
-    correct_answer = quiz.get_answer(current_question)
-    await db.reset_current_question(user_id)
+    correct_answer = questions.get(current_question, "")
+    await redis_client.delete(f"user:{user_id}:current_question")
     await message.answer(f"Правильный ответ: {correct_answer}")
 
-    question = quiz.get_random_question()
-    await db.set_current_question(user_id, question)
+    question = random.choice(list(questions.keys()))
+    await redis_client.set(f"user:{user_id}:current_question", question)
 
     keyboard = get_main_keyboard()
     await message.answer(question, keyboard=keyboard)
 
 
-async def handle_score(message: Message, db: Database):
+async def handle_score(message: Message, redis_client: redis.Redis):
     user_id = message.from_id
-    score = await db.get_score(user_id)
+    score = await redis_client.get(f"user:{user_id}:score")
+    score = int(score) if score else 0
 
     keyboard = get_main_keyboard()
     await message.answer(f"Ваш счёт: {score}", keyboard=keyboard)
 
 
-async def handle_answer_attempt(message: Message, quiz: QuizStorage, db: Database):
+async def handle_answer_attempt(message: Message, redis_client: redis.Redis, questions: dict):
     user_id = message.from_id
     text = message.text.strip()
-    current_question = await db.get_current_question(user_id)
+    current_question = await redis_client.get(f"user:{user_id}:current_question")
 
     if not current_question:
         keyboard = get_main_keyboard()
@@ -78,12 +71,12 @@ async def handle_answer_attempt(message: Message, quiz: QuizStorage, db: Databas
         )
         return
 
-    correct_answer = quiz.get_answer(current_question)
+    correct_answer = questions.get(current_question, "")
     keyboard = get_main_keyboard()
 
     if normalize_answer(text) == normalize_answer(correct_answer):
-        await db.increment_score(user_id)
-        await db.reset_current_question(user_id)
+        await redis_client.incr(f"user:{user_id}:score")
+        await redis_client.delete(f"user:{user_id}:current_question")
         await message.answer(
             "Правильно! Поздравляю! 🎉 Для следующего вопроса нажми «Новый вопрос»",
             keyboard=keyboard

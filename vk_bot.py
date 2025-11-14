@@ -1,24 +1,27 @@
 import redis.asyncio as redis
 from environs import Env
-from vkbottle.bot import Bot, Message
+from vkbottle.bot import Bot
 
-from vk_handlers import (
-    handle_start,
-    handle_new_question,
-    handle_surrender,
-    handle_score,
-    handle_answer_attempt
-)
-from quiz_storage import QuizStorage
-from database import Database
+import vk_handlers
+from quiz import load_questions
 
 
-def register_handlers(bot: Bot, quiz: QuizStorage, db: Database):
-    bot.on.message(text=["Начать", "начать", "start"])(lambda msg: handle_start(msg))
-    bot.on.message(text="Новый вопрос")(lambda msg: handle_new_question(msg, quiz, db))
-    bot.on.message(text="Сдаться")(lambda msg: handle_surrender(msg, quiz, db))
-    bot.on.message(text="Мой счёт")(lambda msg: handle_score(msg, db))
-    bot.on.message()(lambda msg: handle_answer_attempt(msg, quiz, db))
+def register_handlers(bot: Bot, redis_client: redis.Redis, questions: dict):
+    bot.on.message(text=["Начать", "начать", "start"])(
+        lambda msg: vk_handlers.handle_start(msg)
+    )
+    bot.on.message(text="Новый вопрос")(
+        lambda msg: vk_handlers.handle_new_question(msg, redis_client, questions)
+    )
+    bot.on.message(text="Сдаться")(
+        lambda msg: vk_handlers.handle_surrender(msg, redis_client, questions)
+    )
+    bot.on.message(text="Мой счёт")(
+        lambda msg: vk_handlers.handle_score(msg, redis_client)
+    )
+    bot.on.message()(
+        lambda msg: vk_handlers.handle_answer_attempt(msg, redis_client, questions)
+    )
 
 
 def main():
@@ -37,10 +40,10 @@ def main():
         password=redis_password if redis_password else None,
         decode_responses=True
     )
-    quiz = QuizStorage("quiz-questions/1vs1200.txt")
-    db = Database(redis_client)
 
-    register_handlers(bot, quiz, db)
+    questions = load_questions("quiz-questions/1vs1200.txt")
+
+    register_handlers(bot, redis_client, questions)
     bot.run_forever()
 
 
